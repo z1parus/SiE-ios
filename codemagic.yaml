@@ -1,0 +1,53 @@
+workflows:
+  ios-sidestore:
+    name: iOS SideStore IPA
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: com.z1parus.centralhub
+        APP_NAME: CentralHub
+
+    scripts:
+      - name: Set bundle identifier
+        script: |
+          /usr/libexec/PlistBuddy -c \
+            "Set :CFBundleIdentifier $BUNDLE_ID" \
+            ios/Runner/Info.plist
+
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Flutter analyze
+        script: flutter analyze --no-fatal-infos
+
+      - name: Build iOS (unsigned)
+        script: |
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --build-name=1.0.0 \
+            --build-number=$BUILD_NUMBER
+
+      - name: Package as IPA for SideStore
+        script: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r "../../../${APP_NAME}.ipa" Payload
+
+    artifacts:
+      - "*.ipa"
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - zipadump@gmail.com
+        notify:
+          success: true
+          failure: true
